@@ -6,7 +6,7 @@ A smart RGB desk lamp with HomeKit integration, featuring smooth color transitio
 ![Platform](https://img.shields.io/badge/platform-ESP32--C3-green.svg)
 ![HomeKit](https://img.shields.io/badge/HomeKit-compatible-orange.svg)
 
-![Lamp in action](https://github.com/ANDyouNo/SmartDesktopLamp/demo.gif)
+![Lamp in action](https://github.com/ANDyouNo/SmartDesktopLamp/blob/main/demo.GIF)
 ## Features
 
 - 🎨 Full RGB color control via HomeKit
