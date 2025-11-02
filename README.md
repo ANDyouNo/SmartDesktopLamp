@@ -11,7 +11,7 @@ A smart RGB desk lamp with HomeKit integration, featuring smooth color transitio
 - 🎨 Full RGB color control via HomeKit
 - 💡 Smooth brightness and color transitions
 - 🔘 Physical button control
-- 🌈 Visual effects (effects branch)
+- 🌈 Visual effects (effects version)
 - 📱 Native Apple Home app integration
 - ⚡ ESP32-C3 powered
 
@@ -29,9 +29,9 @@ A smart RGB desk lamp with HomeKit integration, featuring smooth color transitio
 | WS2812B Data | GPIO 9 |
 | Button | GPIO 4 |
 
-## Branches
+## Versions
 
-### `main` - Basic Version
+### `LampFirmareBase` - Basic Version
 Simple RGB lamp functionality with smooth transitions. Perfect for everyday use.
 
 **Features:**
@@ -40,7 +40,7 @@ Simple RGB lamp functionality with smooth transitions. Perfect for everyday use.
 - Smooth fading transitions
 - Physical button toggle
 
-### `effects` - Effects Version
+### `LampFirmwareEffects` - Effects Version
 Enhanced version with dynamic visual effects.
 
 **Additional Features:**
@@ -125,7 +125,7 @@ Activate effects by setting specific HSV values in the Home app.
 - **Short Press:** Toggle lamp on/off
 - Maintains last used color and brightness settings
 
-### Effects (Effects Branch Only)
+### Effects (Effects Version Only)
 
 To activate effects, set these specific values in the Home app:
 
