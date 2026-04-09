@@ -6,7 +6,7 @@
 // Pin definitions
 #define LED_PIN 9
 #define BUTTON_PIN 4
-#define NUM_LEDS 8
+#define NUM_LEDS 6
 
 // LED array
 CRGB leds[NUM_LEDS];
@@ -16,7 +16,9 @@ enum EffectMode {
   EFFECT_NONE = 0,
   EFFECT_COLORFUL_TWINKLE = 1,
   EFFECT_AURORA = 2,
-  EFFECT_TWINKLE = 3
+  EFFECT_TWINKLE = 3,
+  EFFECT_RUNNING_RAINBOW = 4,
+  EFFECT_STATIC_RAINBOW = 5
 };
 
 ////////////////////////////////////////////
@@ -57,6 +59,9 @@ struct RGBLightbulb : Service::LightBulb {
   uint16_t auroraPhase = 0;
   uint16_t auroraPhase2 = 0;
 
+  // Rainbow effect variable
+  uint16_t rainbowPhase = 0;
+
   // Timing for smooth transitions
   unsigned long lastUpdateTime = 0;
   const unsigned long updateInterval = 20;
@@ -74,19 +79,23 @@ struct RGBLightbulb : Service::LightBulb {
   // Get render interval based on effect
   unsigned long getEffectInterval(EffectMode mode) {
     switch (mode) {
-      case EFFECT_COLORFUL_TWINKLE: return 30;
-      case EFFECT_AURORA:           return 35;
-      case EFFECT_TWINKLE:          return 50;
-      default:                      return 50;
+      case EFFECT_COLORFUL_TWINKLE:  return 30;
+      case EFFECT_AURORA:            return 35;
+      case EFFECT_TWINKLE:           return 50;
+      case EFFECT_RUNNING_RAINBOW:   return 30;
+      case EFFECT_STATIC_RAINBOW:    return 30;
+      default:                       return 50;
     }
   }
 
   // Detect effect from HSV
   EffectMode detectEffect(float h, int s, int v) {
     if (v < 1) return EFFECT_NONE;
-    if (abs(h - 352.0f) <= 1.0f && abs(s - 3) <= 1)   return EFFECT_COLORFUL_TWINKLE;
-    if (abs(h - 9.0f)   <= 1.0f && abs(s - 5) <= 1)   return EFFECT_AURORA;
-    if (abs(h - 17.0f)  <= 1.0f && abs(s - 7) <= 1)   return EFFECT_TWINKLE;
+    if (abs(h - 352.0f) <= 1.0f && abs(s - 3) <= 1)    return EFFECT_COLORFUL_TWINKLE;
+    if (abs(h - 9.0f)   <= 1.0f && abs(s - 5) <= 1)    return EFFECT_AURORA;
+    if (abs(h - 17.0f)  <= 1.0f && abs(s - 7) <= 1)    return EFFECT_TWINKLE;
+    if (abs(h - 25.0f)  <= 1.0f && abs(s - 15) <= 1)   return EFFECT_RUNNING_RAINBOW;
+    if (abs(h - 22.0f)  <= 1.0f && abs(s - 11) <= 1)   return EFFECT_STATIC_RAINBOW;
     return EFFECT_NONE;
   }
 
@@ -161,6 +170,26 @@ struct RGBLightbulb : Service::LightBulb {
     }
   }
 
+  void renderRainbowAurora() {
+    for (int i = 0; i < NUM_LEDS; i++) {
+      uint8_t b1 = sin8(auroraPhase + i * 20);
+      uint8_t b2 = sin8(auroraPhase2 + i * 35);
+      uint8_t bright = (b1 + b2) / 2;
+      // Полный спектр радуги вместо узкого диапазона
+      uint8_t hue = sin8(auroraPhase / 4 + i * 30) ;
+      leds[i] = applyBrightness(CHSV(hue, 220, bright), currentBrightness);
+    }
+    auroraPhase += 3;
+    auroraPhase2 += 5;
+  }
+
+  // Static Rainbow — все LED одного цвета, оттенок плавно меняется
+  void renderStaticRainbow() {
+    CRGB color = applyBrightness(CHSV(rainbowPhase, 240, 255), currentBrightness);
+    fill_solid(leds, NUM_LEDS, color);
+    rainbowPhase += 1;
+  }
+
   // Smooth transitions
   void updateTransitions() {
     if (millis() - lastUpdateTime < updateInterval) return;
@@ -202,6 +231,8 @@ struct RGBLightbulb : Service::LightBulb {
     Serial.println("  H=352, S=3%  -> Colorful Twinkle");
     Serial.println("  H=9,   S=5%  -> Aurora");
     Serial.println("  H=17,  S=7%  -> Twinkle");
+    Serial.println("  H=25,  S=15% -> Rainbow Aurora");
+    Serial.println("  H=22,  S=11% -> Static Rainbow");
   }
 
   boolean update() {
@@ -219,12 +250,13 @@ struct RGBLightbulb : Service::LightBulb {
       targetEffect = detectEffect(newHue, newSaturation, newBrightness);
 
       if (targetEffect != EFFECT_NONE) {
-        const char* names[] = {"None", "Colorful Twinkle", "Aurora", "Twinkle"};
+        const char* names[] = {"None", "Colorful Twinkle", "Aurora", "Twinkle", "Running Rainbow", "Static Rainbow"};
         Serial.printf("Effect: %s (V=%d%%)\n", names[targetEffect], newBrightness);
         currentEffect = targetEffect;
         if (targetEffect == EFFECT_COLORFUL_TWINKLE || targetEffect == EFFECT_TWINKLE) {
           targetBrightness = twinkleBrightness;
         }
+        // Running Rainbow и Static Rainbow используют targetBrightness напрямую (как Aurora)
       } else {
         if (currentEffect != EFFECT_NONE) {
           Serial.println("Switching to solid color");
@@ -260,8 +292,10 @@ struct RGBLightbulb : Service::LightBulb {
         if (currentEffect != EFFECT_NONE) {
           switch (currentEffect) {
             case EFFECT_COLORFUL_TWINKLE: renderColorfulTwinkle(); break;
-            case EFFECT_AURORA:           renderAurora();         break;
-            case EFFECT_TWINKLE:          renderTwinkle();        break;
+            case EFFECT_AURORA:           renderAurora();          break;
+            case EFFECT_TWINKLE:          renderTwinkle();         break;
+            case EFFECT_RUNNING_RAINBOW:  renderRainbowAurora();  break;
+            case EFFECT_STATIC_RAINBOW:   renderStaticRainbow();   break;
           }
         } else {
           fill_solid(leds, NUM_LEDS, applyBrightness(currentBaseColor, currentBrightness));
@@ -316,7 +350,7 @@ struct RGBLightbulb : Service::LightBulb {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("\n=== HomeSpan RGB Lamp v3.0 ===");
+  Serial.println("\n=== HomeSpan RGB Lamp v3.1 ===");
 
   // Uncomment to reset pairing
   // resetHomeSpanData();
@@ -332,7 +366,7 @@ void setup() {
       new Characteristic::Manufacturer("your_manufacturer");
       new Characteristic::SerialNumber("your_serial_number");
       new Characteristic::Model("SmartLamp RGB Effects");
-      new Characteristic::FirmwareRevision("3.0");
+      new Characteristic::FirmwareRevision("3.1");
 
   new RGBLightbulb();
 
